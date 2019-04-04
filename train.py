@@ -1,3 +1,4 @@
+import os
 import torch
 from torch.optim import Adam
 from torch.utils.data import DataLoader
@@ -13,6 +14,10 @@ iter_per_tick = 100
 ticks_per_snapshot = 10
 batch_size = 32
 image_size = 64
+result_dir = 'results/'
+
+if not os.path.isdir(result_dir):
+    os.mkdir(result_dir)
 
 LSUN_dataset = LSUN(root='./datasets/LSUN', classes=['bedroom_train'], transform=transforms.Compose([
     transforms.Resize(image_size),
@@ -20,12 +25,13 @@ LSUN_dataset = LSUN(root='./datasets/LSUN', classes=['bedroom_train'], transform
     transforms.ToTensor(),
     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
 ]))
+
 dataloader = DataLoader(LSUN_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
 device = torch.device("cuda:0")
 
-D = D_basic(256)
-G = G_basic(256)
+D = D_basic(image_size)
+G = G_basic(image_size)
 
 D = D.to(device)
 G = G.to(device)
@@ -45,15 +51,14 @@ D_optim = Adam(D.parameters(), lr=1e-4)
 G_optim = Adam(G.parameters(), lr=1e-4)
 
 iter_counter = 0
-tick_counter = 1
+tick_counter = 0
+running_D_loss = 0
+running_G_loss = 0
 
 while cur_iter < num_iter:
     # Train phase
     D.train()
     G.train()
-
-    running_D_loss = 0
-    running_G_loss = 0
 
     for i, real_batch in enumerate(dataloader, 0):
 
@@ -86,11 +91,22 @@ while cur_iter < num_iter:
         running_G_loss += G_loss.item()
 
         if iter_counter >= iter_per_tick:
-            print('[Tick {:06d}] D_loss: {:.6f} G_loss: {:.6f}'.format(cur_iter, running_D_loss/iter_counter, running_G_loss/iter_counter))
+            print('[Iteration {:06d}] D_loss: {:.5f} G_loss: {:.5f}'.format(cur_iter, running_D_loss/iter_counter, running_G_loss/iter_counter))
             iter_counter = 0
             tick_counter += 1
+            running_D_loss = 0
+            running_G_loss = 0
+            # Log to tensorboard
+
         
         if tick_counter >= ticks_per_snapshot:
             tick_counter = 0
+            # Evaluate 
+            # Save model
+            save_dict = {
+                'G': G.state_dict(),
+                'D': D.state_dict(),
+            }
+            torch.save(save_dict, os.path.join(result_dir, 'network-snapshot-{:06d}.pkl'.format(cur_iter)))
     
     
