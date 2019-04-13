@@ -86,7 +86,7 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
 
 def get_fid(G, path):
     block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[2048]
-    inception = InceptionV3([block_idx])
+    inception = InceptionV3([block_idx], normalize_input=False)
     inception = inception.to(device)
 
     generated_activations = get_generated_activations(G, inception, n_img=50000)

@@ -4,10 +4,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class G_basic(nn.Module):
-    def __init__(self, res):
+    def __init__(self, res, label_size=0):
         super(G_basic, self).__init__()
         max_scale = int(np.log2(res))
         assert res == 2**max_scale
+
+        if label_size>0:
+            self.label_size = label_size
+            self.label_in = nn.Linear(label_size, 50)
+            self.latent_in = nn.Linear(100, 50)
 
         current_channel = 1024
         self.deconv1 = nn.ConvTranspose2d(100, current_channel, kernel_size=4, stride=1, padding=0)
@@ -23,7 +28,13 @@ class G_basic(nn.Module):
         self.last_deconv = nn.ConvTranspose2d(current_channel, 3, kernel_size=4, stride=2, padding=1)
         self.tanh = nn.Tanh()
 
-    def forward(self, latent):
+    def forward(self, latent, label=None):
+        if label:
+            assert self.label_size > 0
+            label = self.label_in(label)
+            latent = self.latent_in(latent)
+            latent = torch.cat([label, latent], dim=1)
+
         latent = latent.view(latent.shape[0],latent.shape[1],1,1)
         x = self.deconv1(latent)
         x = self.bn1(x)
@@ -34,7 +45,7 @@ class G_basic(nn.Module):
         return x
 
 class D_basic(nn.Module):
-    def __init__(self, res):
+    def __init__(self, res, label_size=0):
         super(D_basic, self).__init__()
         max_scale = int(np.log2(res))
         assert res == 2**max_scale

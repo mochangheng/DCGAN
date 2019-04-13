@@ -19,4 +19,7 @@ def D_logistic(real_out, fake_out):
     return real_loss+fake_loss
 
 def G_energy(fake_out):
-    pass
+    return torch.mean(fake_out)
+
+def D_energy(real_out, fake_out):
+    return torch.mean(real_out)-torch.mean(fake_out)
