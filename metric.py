@@ -99,3 +99,18 @@ def get_fid(G, path):
     fid = calculate_frechet_distance(mu_fake, sigma_fake, mu_real, sigma_real)
     return fid
 
+def get_real_fid(batch):
+    block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[2048]
+    inception = InceptionV3([block_idx], normalize_input=False)
+    inception = inception.to(device)
+
+    real_activations = get_batch_activations(batch, inception)
+    mu_fake, sigma_fake = compute_stats(real_activations)
+    f = np.load('stats/fid_stats_lsun_train.npz')
+    mu_real, sigma_real = f['mu'][:], f['sigma'][:]
+    f.close()
+
+    print(np.max(mu_fake), np.max(mu_real), np.max(sigma_fake), np.max(sigma_real))
+    fid = calculate_frechet_distance(mu_fake, sigma_fake, mu_real, sigma_real)
+    return fid
+

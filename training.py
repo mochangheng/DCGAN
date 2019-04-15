@@ -4,7 +4,7 @@ from network import *
 from loss import *
 from evaluate import *
 from util import *
-from metric import get_fid
+from metric import get_fid, get_real_fid
 from tensorboardX import SummaryWriter
 
 def weights_init(m):
@@ -43,7 +43,13 @@ class TrainSession():
         network_type = 'basic',
         iter_per_tick = 1000,
         ticks_per_snapshot = 10,
+        D_lr = 1e-4,
+        G_lr = 1e-4,
         device = torch.device('cuda:0')):
+
+        iter_per_tick = 10
+        ticks_per_snapshot = 1
+        batch_size = 256
 
         self.log('Starting training..')
 
@@ -55,8 +61,8 @@ class TrainSession():
         D.apply(weights_init)
         G.apply(weights_init)
 
-        D_optim = Adam(D.parameters(), lr=1e-4, weight_decay=5e-4)
-        G_optim = Adam(G.parameters(), lr=1e-4, weight_decay=5e-4)
+        D_optim = Adam(D.parameters(), lr=D_lr, weight_decay=5e-4)
+        G_optim = Adam(G.parameters(), lr=G_lr, weight_decay=5e-4)
 
         D_criterion = D_logistic
         G_criterion = G_logistic_nonsaturating
@@ -128,6 +134,10 @@ class TrainSession():
                     fid = get_fid(G, 'stats/fid_stats_lsun_train.npz')
                     self.log('FID: {}'.format(fid))
                     self.writer.add_scalar('loss/FID', fid, cur_iter)
+
+                    real_fid = get_real_fid(real_batch)
+                    print(real_batch.size())
+                    print(real_fid)
 
                     # Save model
                     save_dict = {
